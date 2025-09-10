@@ -6,25 +6,60 @@ import { callLaravelAPI } from '../services/api.js';
 import { OnboardingHandler } from '../handlers/OnboardingHandler.js';
 import { MenuHandler } from '../handlers/MenuHandler.js';
 import { DepositHandler } from '../handlers/DepositHandler.js';
+import { BotLogService } from '../services/BotLogService.js';
 
 export class BotApp {
   constructor() {
     this.bot = new TelegramBot(config.TELEGRAM_BOT_TOKEN, { polling: true });
     this.sessions = new SessionStore();
 
+    // Log and survive polling errors (e.g., DNS, network)
+    this.bot.on('polling_error', (err) => {
+      console.error('[polling_error]', err?.code || '', err?.message || err);
+    });
+    this.bot.on('webhook_error', (err) => {
+      console.error('[webhook_error]', err?.code || '', err?.message || err);
+    });
+
     // Services
     this.authService = new AuthService(this.sessions);
+    this.botLog = new BotLogService(this.sessions, 'telegram');
+
+    // Monkey-patch sendMessage to log all outgoing bot questions/answers
+    const originalSendMessage = this.bot.sendMessage.bind(this.bot);
+    this.bot.sendMessage = async (chatId, text, options) => {
+      try {
+        // Ensure conversation exists before sending
+        await this.botLog.upsertConversation(chatId);
+        const sent = await originalSendMessage(chatId, text, options);
+        // Record outgoing message with Telegram message_id
+        const sentAt = sent.date ? new Date(sent.date * 1000).toISOString() : new Date().toISOString();
+        await this.botLog.storeMessage(chatId, {
+          direction: 'outgoing',
+          message_type: 'text',
+          content: text,
+          payload: { options },
+          external_message_id: String(sent.message_id),
+          sent_at: sentAt,
+        });
+        return sent;
+      } catch (e) {
+        // Log the failure as a system event
+        await this.botLog.storeSystem(chatId, 'sendMessage failed', { error: e?.message || String(e), text, options });
+        throw e;
+      }
+    };
 
     // Handlers
     this.onboarding = new OnboardingHandler(this.bot, this.sessions, this.authService);
-    this.deposit = new DepositHandler(this.bot, this.sessions, this.authService);
+    this.deposit = new DepositHandler(this.bot, this.sessions, this.authService, this.botLog);
 
     // Menu receives action callbacks so it can call handlers directly
     this.menu = new MenuHandler(this.bot, this.sessions, {
       onDeposit: (msg) => this.deposit.start(msg),
-      onExchange: (msg) => this.bot.sendMessage(msg.chat.id, 'Fonctionnalité en cours d\'implémentation.'),
-      onSend: (msg) => this.bot.sendMessage(msg.chat.id, 'Fonctionnalité en cours d\'implémentation.'),
-      onWithdraw: (msg) => this.bot.sendMessage(msg.chat.id, 'Fonctionnalité en cours d\'implémentation.'),
+      onExchange: (msg) => this.bot.sendMessage(msg.chat.id, 'Feature under implementation.'),
+      onSend: (msg) => this.bot.sendMessage(msg.chat.id, 'Feature under implementation.'),
+      onWithdraw: (msg) => this.bot.sendMessage(msg.chat.id, 'Feature under implementation.'),
     });
   }
 
@@ -38,14 +73,46 @@ export class BotApp {
     // Deposit flow command in case user types /deposit manually
     this.bot.onText(/\/deposit/, (msg) => this.deposit.start(msg));
 
+    // Record incoming user messages for conversation history
+    this.bot.on('message', async (msg) => {
+      try {
+        const chatId = msg.chat.id;
+        // Ensure conversation exists (binds user_id if logged)
+        await this.botLog.upsertConversation(chatId);
+
+        // Determine message type
+        let message_type = 'text';
+        if (Array.isArray(msg.photo) && msg.photo.length) message_type = 'image';
+        else if (msg.document) message_type = 'file';
+        else if (msg.sticker) message_type = 'image';
+
+        const sentAt = msg.date ? new Date(msg.date * 1000).toISOString() : undefined;
+        await this.botLog.storeMessage(chatId, {
+          direction: 'incoming',
+          message_type,
+          content: msg.text || undefined,
+          payload: msg,
+          external_message_id: String(msg.message_id),
+          sent_at: sentAt,
+        });
+      } catch (e) {
+        // Log any unexpected failure to record
+        const chatId = msg?.chat?.id;
+        if (chatId) {
+          await this.botLog.storeSystem(chatId, 'incoming log failed', { error: e?.message || String(e) });
+        }
+        console.error('[botLog] failed to record message', e?.message || e);
+      }
+    });
+
     // Balance (optional)
     this.bot.onText(/\/solde/, async (msg) => {
       const chatId = msg.chat.id;
       await this.bot.sendChatAction(chatId, 'typing');
       const session = this.sessions.get(chatId);
       const data = await callLaravelAPI('/user/balance', chatId, 'POST', {}, { session });
-      if (data?.error) return this.bot.sendMessage(chatId, `❌ Désolé: ${data.error}`);
-      return this.bot.sendMessage(chatId, `💳 Votre solde actuel est de ${data.balance ?? 'N/A'}.`);
+      if (data?.error) return this.bot.sendMessage(chatId, `❌ Sorry: ${data.error}`);
+      return this.bot.sendMessage(chatId, `💳 Your current balance is ${data.balance ?? 'N/A'}.`);
     });
 
     // History (optional)
@@ -54,9 +121,9 @@ export class BotApp {
       await this.bot.sendChatAction(chatId, 'typing');
       const session = this.sessions.get(chatId);
       const data = await callLaravelAPI('/user/transactions', chatId, 'POST', {}, { session });
-      if (data?.error) return this.bot.sendMessage(chatId, `❌ Erreur: ${data.error}`);
-      const list = (data.transactions || []).slice(0, 5).map(t => `▫️ ${t.date}: ${t.type} de ${t.amount}`).join('\n');
-      return this.bot.sendMessage(chatId, list || 'Aucune transaction trouvée.');
+      if (data?.error) return this.bot.sendMessage(chatId, `❌ Error: ${data.error}`);
+      const list = (data.transactions || []).slice(0, 5).map(t => `▫️ ${t.date}: ${t.type} of ${t.amount}`).join('\n');
+      return this.bot.sendMessage(chatId, list || 'No transactions found.');
     });
   }
 }
