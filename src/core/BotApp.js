@@ -51,7 +51,7 @@ export class BotApp {
     };
 
     // Handlers
-    this.onboarding = new OnboardingHandler(this.bot, this.sessions, this.authService);
+    this.onboarding = new OnboardingHandler(this.bot, this.sessions, this.authService, this.botLog);
     this.deposit = new DepositHandler(this.bot, this.sessions, this.authService, this.botLog);
 
     // Menu receives action callbacks so it can call handlers directly
@@ -72,6 +72,11 @@ export class BotApp {
 
     // Deposit flow command in case user types /deposit manually
     this.bot.onText(/\/deposit/, (msg) => this.deposit.start(msg));
+
+    // No account quick commands
+    this.bot.onText(/\/(noaccount|sanscompte)/i, (msg) => this.onboarding.requestContactForNoAccount(msg));
+    // Natural language: "I'm new", "I am new", "nouveau", "je n'ai pas de compte"
+    this.bot.onText(/\b(i['’]?m new|i am new|new user|je suis nouveau|je n['’]ai pas de compte|sans compte)\b/i, (msg) => this.onboarding.requestContactForNoAccount(msg));
 
     // Record incoming user messages for conversation history
     this.bot.on('message', async (msg) => {

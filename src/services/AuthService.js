@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { config } from '../config.js';
+import { callLaravelAPI } from './api.js';
 
 export class AuthService {
   constructor(sessionStore) {
@@ -103,5 +104,32 @@ export class AuthService {
       if (err.request) return { error: 'Network error: no response from API' };
       return { error: err.message || 'Unexpected error' };
     }
+  }
+
+  async registerUser(chatId, payload) {
+    const session = this.sessions.get(chatId);
+    // Try the typical API route first
+    let res = await callLaravelAPI('/user/register', chatId, 'POST', payload, { session });
+    if (res?.error) {
+      // Fallback to /register if the first is not available
+      res = await callLaravelAPI('/register', chatId, 'POST', payload, { session });
+    }
+
+    // On success, save auth token if returned
+    if (!res?.error && (res?.token || res?.access_token || res?.response?.token)) {
+      const token = res.token || res.access_token || res.response?.token;
+      const user = res.user || res.response?.user || null;
+      this.sessions.set(chatId, {
+        ...session,
+        auth: {
+          ...(session?.auth || {}),
+          isAuthed: true,
+          accessToken: token,
+          email: payload.email || user?.email || null,
+          user: user || session?.auth?.user,
+        },
+      });
+    }
+    return res;
   }
 }
