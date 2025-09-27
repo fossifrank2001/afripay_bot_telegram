@@ -1,6 +1,7 @@
 import { callLaravelAPI, uploadMultipart } from '../services/api.js';
 import axios from 'axios';
 import FormData from 'form-data';
+import { UtilService } from '../utils/loader.js';
 
 export class DepositHandler {
   constructor(bot, sessions, authService, botLog) {
@@ -23,7 +24,10 @@ export class DepositHandler {
     }
 
     // Fetch wallets and recent deposits
-    const data = await callLaravelAPI('/user/deposit', chatId, 'GET', {}, { session });
+    const data = await UtilService.withLoader(this.bot, chatId, 'Fetching deposit data…', async () => {
+      return await callLaravelAPI('/user/deposit', chatId, 'GET', {}, { session });
+    });
+
     if (data?.error) {
       try { await this.botLog?.storeSystem(chatId, 'wallets_fetch_failed', { error: data.error }); } catch {}
       return this.bot.sendMessage(chatId, `❌ Error: ${data.error}`);
@@ -88,7 +92,10 @@ export class DepositHandler {
         this.sessions.set(chatId, session);
 
         // Fetch gateway methods for selected wallet
-        const methodsRes = await callLaravelAPI('/user/gateway-methods', chatId, 'GET', { currency_id: String(chosen.id) }, { session });
+        const methodsRes = await UtilService.withLoader(this.bot, chatId, 'Fetching payment methods…', async () => {
+          return await callLaravelAPI('/user/gateway-methods', chatId, 'GET', { currency_id: String(chosen.id) }, { session });
+        });
+
         if (methodsRes?.error) {
           try { await this.botLog?.storeSystem(chatId, 'gateway_methods_failed', { error: methodsRes.error }); } catch {}
           return this.bot.sendMessage(chatId, `❌ Payment methods error: ${methodsRes.error}`);
@@ -234,7 +241,9 @@ export class DepositHandler {
                         // Provide keyword for manual flow if backend expects it
                         form.append('gateway', session.deposit.gateway.keyword || 'manual-deposit');
 
-                        const res = await uploadMultipart('/user/deposit/submit', chatId, form, { session });
+                        const res = await UtilService.withLoader(this.bot, chatId, 'Submitting deposit…', async () => {
+                          return await uploadMultipart('/user/deposit/submit', chatId, form, { session });
+                        });
                         if (res?.error) {
                           try { await this.botLog?.storeSystem(chatId, 'manual_submit_failed', { error: res.error }); } catch {}
                           await this.bot.sendMessage(chatId, `❌ Deposit failed: ${res.error}`);
@@ -322,7 +331,9 @@ export class DepositHandler {
 
                     // Verify PIN with API using stored user token
                     const email = this.sessions.get(chatId)?.auth?.email;
-                    const pinRes = await this.auth.verifyPin(chatId, { email, pin });
+                    const pinRes = await UtilService.withLoader(this.bot, chatId, 'Verifying PIN…', async () => {
+                      return await this.auth.verifyPin(chatId, { email, pin });
+                    });
                     if (pinRes?.error) {
                       try { await this.botLog?.storeSystem(chatId, 'pin_verify_failed', { error: pinRes.error }); } catch {}
                       if (attempt < maxAttempts) return askPin(attempt + 1);
@@ -337,7 +348,11 @@ export class DepositHandler {
                       gateway_id: session.deposit.gateway.id,
                       phone_number: session.deposit.phone,
                     };
-                    const submitRes = await callLaravelAPI('/user/deposit/submit', chatId, 'POST', body, { session });
+                    
+                    const submitRes = await UtilService.withLoader(this.bot, chatId, 'Submitting deposit…', async () => {
+                      return await callLaravelAPI('/user/deposit/submit', chatId, 'POST', body, { session });
+                    });
+
                     if (submitRes?.error) {
                       try { await this.botLog?.storeSystem(chatId, 'deposit_submit_failed', { error: submitRes.error }); } catch {}
                       await this.bot.sendMessage(chatId, `❌ Deposit failed: ${submitRes.error}`);

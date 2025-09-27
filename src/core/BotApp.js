@@ -6,6 +6,7 @@ import { callLaravelAPI } from '../services/api.js';
 import { OnboardingHandler } from '../handlers/OnboardingHandler.js';
 import { MenuHandler } from '../handlers/MenuHandler.js';
 import { DepositHandler } from '../handlers/DepositHandler.js';
+import { ExchangeHandler } from '../handlers/ExchangeHandler.js';
 import { BotLogService } from '../services/BotLogService.js';
 
 export class BotApp {
@@ -53,11 +54,12 @@ export class BotApp {
     // Handlers
     this.onboarding = new OnboardingHandler(this.bot, this.sessions, this.authService, this.botLog);
     this.deposit = new DepositHandler(this.bot, this.sessions, this.authService, this.botLog);
+    this.exchange = new ExchangeHandler(this.bot, this.sessions, this.authService, this.botLog);
 
     // Menu receives action callbacks so it can call handlers directly
     this.menu = new MenuHandler(this.bot, this.sessions, {
       onDeposit: (msg) => this.deposit.start(msg),
-      onExchange: (msg) => this.bot.sendMessage(msg.chat.id, 'Feature under implementation.'),
+      onExchange: (msg) => this.exchange.start(msg),
       onSend: (msg) => this.bot.sendMessage(msg.chat.id, 'Feature under implementation.'),
       onWithdraw: (msg) => this.bot.sendMessage(msg.chat.id, 'Feature under implementation.'),
     });
@@ -70,8 +72,11 @@ export class BotApp {
     // Main menu and generic commands
     this.menu.register();
 
-    // Deposit flow command in case user types /deposit manually
+    // deposit flow command in case user types /deposit manually
     this.bot.onText(/\/deposit/, (msg) => this.deposit.start(msg));
+
+    // Exchange flow command
+    this.bot.onText(/\/exchange/, (msg) => this.exchange.start(msg));
 
     // No account quick commands
     this.bot.onText(/\/(noaccount|sanscompte)/i, (msg) => this.onboarding.requestContactForNoAccount(msg));

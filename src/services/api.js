@@ -42,12 +42,15 @@ export async function callLaravelAPI(endpoint, chatId, method = 'POST', body = {
     'X-Requested-With': 'XMLHttpRequest',
   };
 
-  // Prefer per-user access token (Sanctum), else fallback to bot Bearer key
-  const userToken = session?.auth?.accessToken;
-  if (userToken) {
-    headers['Authorization'] = `Bearer ${userToken}`;
-  } else if (config.LARAVEL_BOT_API_KEY) {
-    headers['Authorization'] = `Bearer ${config.LARAVEL_BOT_API_KEY}`;
+  // For all endpoints except simulator, attach Authorization if available
+  const isSimulator = endpoint === '/simulator';
+  if (!isSimulator) {
+    const userToken = session?.auth?.accessToken;
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+    } else if (config.LARAVEL_BOT_API_KEY) {
+      headers['Authorization'] = `Bearer ${config.LARAVEL_BOT_API_KEY}`;
+    }
   }
 
   // Always include chat identifier in payload
