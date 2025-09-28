@@ -51,8 +51,8 @@ export async function callLaravelAPI(endpoint, chatId, method = 'POST', body = {
     } else if (config.LARAVEL_BOT_API_KEY) {
       headers['Authorization'] = `Bearer ${config.LARAVEL_BOT_API_KEY}`;
     }
-  }
-
+  } 
+ 
   // Always include chat identifier in payload
   const payload = { telegram_chat_id: chatId, ...body };
 

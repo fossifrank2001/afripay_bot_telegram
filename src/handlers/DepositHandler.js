@@ -48,11 +48,11 @@ export class DepositHandler {
       const amount = h.amount;
       const method = h.method; // id only available
       const status = h.status;
-      const date = h.created_at?.split('T')[0] || h.created_at || '';
-      return `• ${amount} | method: ${method} | ${status} | ${date}`;
+      const date = UtilService.formatDT(h.created_at);
+      return `▫️ ${amount} | method: ${method} | ${status} | ${date}`;
     }).join('\n');
 
-    const histBlock = last3 ? `Last deposits:\n${last3}\n\n` : '';
+    const histBlock = last3 ? `💰 Last deposits:\n${last3}\n\n` : '';
 
     await this.bot.sendMessage(chatId, histBlock + 'Enter the amount to deposit (e.g., 10000). This amount will top up your balance in the selected wallet.');
 

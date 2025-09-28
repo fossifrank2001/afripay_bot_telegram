@@ -20,7 +20,7 @@ export class ExchangeHandler {
 
     await this.bot.sendChatAction(chatId, 'typing');
     const form = await UtilService.withLoader(this.bot, chatId, 'Récupération du formulaire…', async () => {
-        return await this.exchangeService.fetchForm(chatId);
+      return await this.exchangeService.fetchForm(chatId);
     });
     if (form?.error) {
       try { await this.botLog?.storeSystem(chatId, 'exchange_form_failed', { error: form.error }); } catch {}
@@ -111,9 +111,9 @@ export class ExchangeHandler {
     this.sessions.set(chatId, session);
 
     const toList = flow.currencies
-      .filter(c => String(c.id) !== String(from.curr_id))
-      .map((c, i) => `${i + 1}) ${c.code}`)
-      .join('\n');
+        .filter(c => String(c.id) !== String(from.curr_id))
+        .map((c, i) => `${i + 1}) ${c.code}`)
+        .join('\n');
 
     await this.bot.sendMessage(chatId, `Choisissez la devise cible (To Currency):\n${toList}\n\nEnvoyez le numéro (ex: 1).`);
     this.bot.once('message', (m) => this._handleTo(chatId, m));
@@ -139,34 +139,34 @@ export class ExchangeHandler {
 
     let resume;
     try {
-    const sim = await UtilService.withLoader(this.bot, chatId, 'Calcul de la simulation…', async () => {
+      const sim = await UtilService.withLoader(this.bot, chatId, 'Calcul de la simulation…', async () => {
         return await this.exchangeService.simulate(chatId, {
-            amount: flow.amount,
-            currency: flow.from.code,
-            to_currency: to.code,
+          amount: flow.amount,
+          currency: flow.from.code,
+          to_currency: to.code,
         });
-    });
+      });
 
-    console.log('Simulator response ::: ', sim);
+      console.log('Simulator response ::: ', sim);
 
-    // Journaliser la réponse brute pour debug
-    try { await this.botLog?.storeSystem(chatId, 'exchange_simulator_response', sim); } catch {}
+      // Journaliser la réponse brute pour debug
+      try { await this.botLog?.storeSystem(chatId, 'exchange_simulator_response', sim); } catch {}
 
-    // Normaliser la structure: on gère {fees,...}, {data:{...}}, {response:{...}}, ou imbriqués
-    const root = sim?.data || sim?.response || sim || {};
-    const payload = root.response || root.data || root;
+      // Normaliser la structure: on gère {fees,...}, {data:{...}}, {response:{...}}, ou imbriqués
+      const root = sim?.data || sim?.response || sim || {};
+      const payload = root.response || root.data || root;
 
-    const fees = payload.fees ?? payload?.data?.fees ?? root.fees ?? root?.data?.fees;
-    const tva = payload.tva ?? payload?.data?.tva ?? root.tva ?? root?.data?.tva;
-    const receiveAmount = payload.receiveAmount ?? payload?.data?.receiveAmount ?? root.receiveAmount ?? root?.data?.receiveAmount;
-    const rateText = payload.dollarText ?? payload?.data?.dollarText ?? root.dollarText ?? root?.data?.dollarText;
+      const fees = payload.fees ?? payload?.data?.fees ?? root.fees ?? root?.data?.fees;
+      const tva = payload.tva ?? payload?.data?.tva ?? root.tva ?? root?.data?.tva;
+      const receiveAmount = payload.receiveAmount ?? payload?.data?.receiveAmount ?? root.receiveAmount ?? root?.data?.receiveAmount;
+      const rateText = payload.dollarText ?? payload?.data?.dollarText ?? root.dollarText ?? root?.data?.dollarText;
 
-    // Si malgré tout on n'a pas les valeurs, on signale et on passe en fallback
-    if (fees === undefined || receiveAmount === undefined) {
+      // Si malgré tout on n'a pas les valeurs, on signale et on passe en fallback
+      if (fees === undefined || receiveAmount === undefined) {
         throw new Error('Simulator payload missing fields');
-    }
+      }
 
-    resume = [
+      resume = [
         `From: ${flow.from.code}`,
         `To: ${to.code}`,
         rateText ? `${rateText}` : null,
@@ -174,28 +174,28 @@ export class ExchangeHandler {
         `Exchange Charge: ${fees} ${flow.from.code}`,
         tva ? `TVA: ${tva} ${flow.from.code}` : null,
         `Will get: ${receiveAmount} ${to.code}`,
-    ].filter(Boolean).join('\n');
+      ].filter(Boolean).join('\n');
 
     } catch (e) {
-    // Fallback local si le simulateur échoue/renvoie un format inattendu
-    const amount = flow.amount;
-    const fromRate = flow.from.rate || 1;
-    const toRate = to.rate || 1;
-    const defaultAmount = amount / fromRate;
-    const willGet = defaultAmount * toRate;
-    const fixed = Number(flow.charge?.fixed_charge || 0) * fromRate;
-    const percent = Number(flow.charge?.percent_charge || 0);
-    const exCharge = fixed + amount * (percent / 100);
+      // Fallback local si le simulateur échoue/renvoie un format inattendu
+      const amount = flow.amount;
+      const fromRate = flow.from.rate || 1;
+      const toRate = to.rate || 1;
+      const defaultAmount = amount / fromRate;
+      const willGet = defaultAmount * toRate;
+      const fixed = Number(flow.charge?.fixed_charge || 0) * fromRate;
+      const percent = Number(flow.charge?.percent_charge || 0);
+      const exCharge = fixed + amount * (percent / 100);
 
-    try { await this.botLog?.storeSystem(chatId, 'exchange_simulator_fallback', { error: e?.message }); } catch {}
+      try { await this.botLog?.storeSystem(chatId, 'exchange_simulator_fallback', { error: e?.message }); } catch {}
 
-    resume = [
+      resume = [
         `From: ${flow.from.code}`,
         `To: ${to.code}`,
         `Amount: ${amount} ${flow.from.code}`,
         `Charge: ${exCharge.toFixed(2)} ${flow.from.code}`,
         `Will get: ${willGet.toFixed(2)} ${to.code}`,
-    ].join('\n');
+      ].join('\n');
     }
 
     await this.bot.sendMessage(chatId, `${resume}\n\nEntrez votre PIN (6 chiffres) pour confirmer:`);
@@ -233,7 +233,7 @@ export class ExchangeHandler {
     // Verify PIN
     const email = session?.auth?.email;
     const pinRes = await UtilService.withLoader(this.bot, chatId, 'Vérification du PIN…', async () => {
-        return await this.auth.verifyPin(chatId, { email, pin });
+      return await this.auth.verifyPin(chatId, { email, pin });
     });
 
     if (pinRes?.error) {
@@ -267,7 +267,7 @@ export class ExchangeHandler {
     };
 
     const res = await UtilService.withLoader(this.bot, chatId, "Soumission de l'échange…", async () => {
-    return await this.exchangeService.submitExchange(chatId, payload);
+      return await this.exchangeService.submitExchange(chatId, payload);
     });
     if (res?.error) {
       try { await this.botLog?.storeSystem(chatId, 'exchange_submit_failed', { error: res.error }); } catch {}
