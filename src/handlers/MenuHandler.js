@@ -22,15 +22,25 @@ export class MenuHandler {
     this.bot.onText(/\/menu/, async (msg) => {
       const chatId = msg.chat.id;
       const text = [
-        'Available Afripay services:',
-        '1) 💰 Deposit',
-        '2) 🔁 Exchange',
-        '3) 📤 Send',
-        '4) 🏧 Withdraw',
+        '📱 <b>Afripay Finance Menu</b>',
         '',
-        'Choose an option from the keyboard below.'
+        '🌟 <u>Available services:</u>',
+        '',
+        '💰 <b>Deposit</b>',
+        '   • Deposit money to your account',
+        '',
+        '🔁 <b>Exchange</b>',
+        '   • Exchange between different currencies',
+        '',
+        '📤 <b>Send</b>',
+        '   • Send money to your contacts',
+        '',
+        '🏧 <b>Withdraw</b>',
+        '   • Withdraw your funds',
+        '',
+        '👇 <i>Choose an option from the keyboard below:</i>'
       ].join('\n');
-      await this.bot.sendMessage(chatId, text, this.keyboard());
+      await this.bot.sendMessage(chatId, text, { ...this.keyboard(), parse_mode: 'HTML' });
     });
 
     // Map button presses to action callbacks
@@ -38,19 +48,19 @@ export class MenuHandler {
       const t = (msg.text || '').trim().toLowerCase();
       if (t === '💰 deposit' || t === 'deposit') {
         if (this.actions.onDeposit) return this.actions.onDeposit(msg);
-        return this.bot.sendMessage(msg.chat.id, 'Feature under implementation.');
+        return this.bot.sendMessage(msg.chat.id, '🚧 <b>Feature in development</b>\n\n⚙️ This feature will be available soon!\n\n🔜 Return to menu: /menu', { parse_mode: 'HTML' });
       }
       if (t === '🔁 exchange' || t === 'exchange') {
         if (this.actions.onExchange) return this.actions.onExchange(msg);
-        return this.bot.sendMessage(msg.chat.id, 'Feature under implementation.');
+        return this.bot.sendMessage(msg.chat.id, '🚧 <b>Feature in development</b>\n\n⚙️ This feature will be available soon!\n\n🔜 Return to menu: /menu', { parse_mode: 'HTML' });
       }
       if (t === '📤 send' || t === 'send') {
         if (this.actions.onSend) return this.actions.onSend(msg);
-        return this.bot.sendMessage(msg.chat.id, 'Feature under implementation.');
+        return this.bot.sendMessage(msg.chat.id, '🚧 <b>Feature in development</b>\n\n⚙️ This feature will be available soon!\n\n🔜 Return to menu: /menu', { parse_mode: 'HTML' });
       }
       if (t === '🏧 withdraw' || t === 'withdraw') {
         if (this.actions.onWithdraw) return this.actions.onWithdraw(msg);
-        return this.bot.sendMessage(msg.chat.id, 'Feature under implementation.');
+        return this.bot.sendMessage(msg.chat.id, '🚧 <b>Feature in development</b>\n\n⚙️ This feature will be available soon!\n\n🔜 Return to menu: /menu', { parse_mode: 'HTML' });
       }
     });
   }

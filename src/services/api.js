@@ -28,7 +28,7 @@ function buildAxiosConfig(endpoint, method, headers, body, isGet) {
 }
 
 export async function callLaravelAPI(endpoint, chatId, method = 'POST', body = {}, { session } = {}) {
-  const baseURL = resolveBaseURL();
+  const baseURL = resolveBaseURL(); 
   if (!baseURL) {
     return { error: 'API not configured' };
   }

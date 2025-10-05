@@ -10,7 +10,7 @@ export class BotLogService {
   // Ensure a conversation exists and optionally bind user_id
   async upsertConversation(chatId, { userId, title } = {}) {
     const session = this.sessions.get(chatId);
-    const body = {
+    const body = { 
       channel: this.channel,
       external_chat_id: String(chatId),
       user_id: userId ?? session?.auth?.user?.id ?? undefined,
