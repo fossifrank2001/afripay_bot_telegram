@@ -7,12 +7,14 @@ import { OnboardingHandler } from '../handlers/OnboardingHandler.js';
 import { MenuHandler } from '../handlers/MenuHandler.js';
 import { DepositHandler } from '../handlers/DepositHandler.js';
 import { ExchangeHandler } from '../handlers/ExchangeHandler.js';
+import { TransferHandler } from '../handlers/TransferHandler.js';
 import { BotLogService } from '../services/BotLogService.js';
 
 export class BotApp {
   constructor() {
     this.bot = new TelegramBot(config.TELEGRAM_BOT_TOKEN, { polling: true });
     this.sessions = new SessionStore();
+    this._registered = false; // guard to prevent double registration
 
     // Log and survive polling errors (e.g., DNS, network)
     this.bot.on('polling_error', (err) => {
@@ -55,17 +57,21 @@ export class BotApp {
     this.onboarding = new OnboardingHandler(this.bot, this.sessions, this.authService, this.botLog);
     this.deposit = new DepositHandler(this.bot, this.sessions, this.authService, this.botLog);
     this.exchange = new ExchangeHandler(this.bot, this.sessions, this.authService, this.botLog);
+    this.transfer = new TransferHandler(this.bot, this.sessions, this.authService, this.botLog);
 
     // Menu receives action callbacks so it can call handlers directly
     this.menu = new MenuHandler(this.bot, this.sessions, {
       onDeposit: (msg) => this.deposit.start(msg),
       onExchange: (msg) => this.exchange.start(msg),
+      onTransfer: (msg) => this.transfer.start(msg),
       onSend: (msg) => this.bot.sendMessage(msg.chat.id, 'Feature under implementation.'),
       onWithdraw: (msg) => this.bot.sendMessage(msg.chat.id, 'Feature under implementation.'),
     });
   }
 
   register() {
+    if (this._registered) return; // avoid double-registering handlers
+    this._registered = true;
     // Onboarding
     this.onboarding.register();
 
@@ -77,6 +83,9 @@ export class BotApp {
 
     // Exchange flow command
     this.bot.onText(/\/exchange/, (msg) => this.exchange.start(msg));
+
+    // Transfer flow command
+    this.bot.onText(/\/transfer/, (msg) => this.transfer.start(msg));
 
     // No account quick commands
     this.bot.onText(/\/(noaccount|sanscompte)/i, (msg) => this.onboarding.requestContactForNoAccount(msg));

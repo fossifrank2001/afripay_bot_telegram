@@ -2,7 +2,7 @@ export class MenuHandler {
   constructor(bot, sessions, actions = {}) {
     this.bot = bot;
     this.sessions = sessions;
-    this.actions = actions; // { onDeposit, onExchange, onSend, onWithdraw }
+    this.actions = actions; // { onDeposit, onExchange, onTransfer, onSend, onWithdraw }
   }
 
   keyboard() {
@@ -10,7 +10,8 @@ export class MenuHandler {
       reply_markup: {
         keyboard: [
           [{ text: '💰 Deposit' }, { text: '🔁 Exchange' }],
-          [{ text: '📤 Send' }, { text: '🏧 Withdraw' }],
+          [{ text: '💸 Transfer' }, { text: '📤 Send' }],
+          [{ text: '🏧 Withdraw' }],
         ],
         resize_keyboard: true,
         one_time_keyboard: false,
@@ -32,6 +33,9 @@ export class MenuHandler {
         '🔁 <b>Exchange</b>',
         '   • Exchange between different currencies',
         '',
+        '💸 <b>Transfer</b>',
+        '   • Bank transfer or beneficiary transfer',
+        '',
         '📤 <b>Send</b>',
         '   • Send money to your contacts',
         '',
@@ -52,6 +56,10 @@ export class MenuHandler {
       }
       if (t === '🔁 exchange' || t === 'exchange') {
         if (this.actions.onExchange) return this.actions.onExchange(msg);
+        return this.bot.sendMessage(msg.chat.id, '🚧 <b>Feature in development</b>\n\n⚙️ This feature will be available soon!\n\n🔜 Return to menu: /menu', { parse_mode: 'HTML' });
+      }
+      if (t === '💸 transfer' || t === 'transfer') {
+        if (this.actions.onTransfer) return this.actions.onTransfer(msg);
         return this.bot.sendMessage(msg.chat.id, '🚧 <b>Feature in development</b>\n\n⚙️ This feature will be available soon!\n\n🔜 Return to menu: /menu', { parse_mode: 'HTML' });
       }
       if (t === '📤 send' || t === 'send') {
